@@ -1,4 +1,4 @@
-import { User } from "../models/user.models";
+import { User } from "../models/user.models.js";
 import {asyncHandler} from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -21,7 +21,7 @@ const signUp = asyncHandler(async(req,res)=>{
     try {
         const {fullname, email , username , password } = req.body
         if (
-            [fullname , username , password , email , bio].some((field) => field?.trim()=== "")
+            [fullname , username , password , email ].some((field) => field?.trim()=== "")
             ) {
                 throw new ApiError(400,"ALL feild are required")
             }
