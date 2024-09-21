@@ -6,10 +6,10 @@ import bcrypt from "bcrypt"
 const userSchema = new Schema(
     {
         username :{
-        type: String,
-        required : true,
-        unique : true
-        },
+            type: String,
+            required : true,
+            unique : true
+            },
         email:{
             type : String ,
             unique:true,

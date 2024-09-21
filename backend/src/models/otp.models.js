@@ -25,8 +25,8 @@ otpSchema.methods.generateAccessToken = function()
         email:this.email,
         otp:this.otp
     },
-    process.env.PASSWORD_CHANGE_TOKEN_SECRET,{
-        expiresIn:process.env.PASSWORD_CHANGE_EXPIRY
+    process.env.VERIFY_ACCESS_TOKEN_SECRET,{
+        expiresIn:process.env.VERIFY_TOKEN_EXPIRY
     }
     )
     
