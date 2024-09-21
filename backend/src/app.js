@@ -28,4 +28,7 @@ app.use(express.static("public"))//public asset hae jaha
 import userRouter from "./routes/user.routes.js"
 app.use("/api/v1/user",userRouter)
 
+import apiRouter from "./routes/api.routes.js"
+app.use("/api/v1/api_key",apiRouter)
+
 export {app}
