@@ -31,4 +31,7 @@ app.use("/api/v1/user",userRouter)
 import apiRouter from "./routes/api.routes.js"
 app.use("/api/v1/api_key",apiRouter)
 
+import imageRoute from "./routes/image.routes.js"
+app.use("/api/v1/image",imageRoute)
+
 export {app}
