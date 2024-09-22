@@ -2,6 +2,9 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { bucket } from "../utils/gcp.js";
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import path from 'path';
 
 const uploadImage = asyncHandler(async (req, res) => {
     try {
@@ -22,7 +25,7 @@ const uploadImage = asyncHandler(async (req, res) => {
         console.log("GCP Blob: ", blob);
 
         const blobStream = blob.createWriteStream({
-            resumable: false, // Non-resumable for simplicity
+            resumable: false,
         });
 
         console.log("Blob stream created, starting upload...");
@@ -36,11 +39,24 @@ const uploadImage = asyncHandler(async (req, res) => {
             throw new ApiError(400, err.message);
         });
 
+
         // Finish event is triggered when the file is fully uploaded
-        blobStream.on('finish', () => {
+        blobStream.on('finish', async () => {
             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
             console.log("Upload finished, public URL: ", publicUrl);
-            
+            // Get the current directory name in an ES module
+            const __filename = fileURLToPath(import.meta.url);  // This gives the current file path
+            const __dirname = path.dirname(__filename);         // This gives the current directory
+            // Remove the file from the local public/temp directory
+            const filePath = path.join(__dirname, '../../public/temp', req.file.originalname); // Adjust the path based on your structure
+            fs.unlink(filePath, (err) => {
+                if (err) {
+                    console.error("Error removing file: ", err.message);
+                } else {
+                    console.log("File removed from local directory successfully.");
+                }
+            });
+
             return res.status(200).json(
                 new ApiResponse(200, { url: publicUrl }, "File uploaded successfully")
             );
