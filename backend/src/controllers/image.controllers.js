@@ -10,6 +10,8 @@ const unlinkAsync = promisify(fs.unlink); // Convert fs.unlink to return a promi
 
 const uploadImage = asyncHandler(async (req, res) => {
     try {
+        const { isPublic } = req.body; // Public or private flag
+
         if (!req.file) {
             return res.status(400).json(
                 new ApiResponse(400, {}, "No file uploaded")
@@ -34,15 +36,18 @@ const uploadImage = asyncHandler(async (req, res) => {
 
         // Handle finish event after file is uploaded
         blobStream.on('finish', async () => {
-            await blob.makePublic();
+            if (isPublic) {
+                // Make the file publicly accessible
+                await blob.makePublic();
+            }
 
             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
             
             // Remove file from local disk after successful upload
             await unlinkAsync(filePath);
-
+            console.log("server")
             return res.status(200).json(
-                new ApiResponse(200, { url: publicUrl }, "File uploaded and removed from local directory successfully")
+                new ApiResponse(200, { url: publicUrl }, `File uploaded ${isPublic ? 'publicly' : 'privately'} and removed from local directory successfully`)
             );
         });
 
