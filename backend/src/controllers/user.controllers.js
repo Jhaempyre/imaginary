@@ -6,6 +6,7 @@ import OTP from "../models/otp.models.js";
 import sendOtpMail from "../utils/sendEmail.js";
 import { ApiKey } from "../models/apikey.models.js";
 import sendAPIOtpMail from "../utils/sendAPIOtpEmail.js";
+import jwt from "jsonwebtoken"
 
 
 const genrateAccessTokenAndRefreshToken = async (userId) => {
@@ -22,14 +23,14 @@ const genrateAccessTokenAndRefreshToken = async (userId) => {
 };
 const genrateAccessTokenForOtp = async(id)=>{
     try {
-        const OTp = await OTP.findById(finderId);
+        const OTp = await OTP.findById(id);
         console.log(OTp)
         if (!OTp)
             throw new ApiError(404,"invalid user , you are not registered with us.")
        console.log("server hu mae ")  
-       const verifyToken = await OTp.genrateAccessToken()
+       const verifyToken = OTp.generateAccessToken()
        console.log("Raja raam janki rani ")  
-       console.log("verifytoken".verifyToken)
+       console.log("verifytoken",verifyToken)
        return verifyToken ; 
 
     } catch (error) {
@@ -216,19 +217,22 @@ const changePassword = asyncHandler(async(req,res)=>{
 
 const sendOtp = asyncHandler(async(req,res)=>{
     try {
-        const {emailid} = req.theUser.email
-        console.log(emailid);
+        const emailid = req.theUser.email
+        console.log(req.theUser.email);
+        console.log(emailid)
         if(!emailid){
-            throw new ApiError(200,"you are not authorized")
-        }
-        const success = await User.findOne({emailid})
-        if(!success){
             throw new ApiError(400,"you are not authorized")
         }
+        const success = await User.findOne({email:emailid})
+        if(!success){
+            console.log("semi")
+            throw new ApiError(400,"you are not semi authorized")
+        }
+        console.log("1")
         const fullname = success.fullname
         const otp = genrateOtp()
         const theOTP = await OTP.create({
-            emailid,
+            email:emailid,
             otp
         })
         console.log(theOTP);
@@ -261,13 +265,14 @@ const validatedOtp = asyncHandler(async(req,res)=>{
     if(!token){
         throw new ApiError(400,"Unauthorised request")
     }
-    const decodedToken = jwt.verify(token, process.env.PASSWORD_CHANGE_TOKEN_SECRET)
+    const decodedToken = jwt.verify(token, process.env.VERIFY_ACCESS_TOKEN_SECRET)
     console.log("decoded token",decodedToken)
     const theOtp = decodedToken.otp
     const theEmail = decodedToken.email
      if(theOtp==otp){
         console.log("verified")
-        const success = await User.findOne({emailid:theEmail})
+        const success = await User.findOne({email:theEmail})
+        console.log(success)
         if(!success){
             throw new ApiError(400,"you are not authorized")
         }
@@ -293,19 +298,22 @@ const validatedOtp = asyncHandler(async(req,res)=>{
 const handleAPIrequest = asyncHandler(async(req,res)=>{
     try {
         console.log("API request came")
-        const {emailid} = req.theUser.email
+        const emailid = req.theUser.email
         console.log(emailid);
         if(!emailid){
             throw new ApiError(200,"you are not authorized")
         }
-        const success = await User.findOne({emailid})
+        console.log("ryka")
+        const success = await User.findOne({email:emailid})
+        console.log(success)
         if(!success){
-            throw new ApiError(400,"you are not authorized")
+            console.log("semi")
+            throw new ApiError(400,"you are not semi authorized")
         }
         const fullname = success.fullname
         const otp = genrateOtp()
         const theOTP = await OTP.create({
-            emailid,
+            email:emailid,
             otp
         })
         console.log(theOTP);
@@ -340,13 +348,13 @@ const generateAPICredentials = asyncHandler(async(req,res)=>{
         if(!token){
             throw new ApiError(400,"Unauthorised request")
         }
-        const decodedToken = jwt.verify(token, process.env.PASSWORD_CHANGE_TOKEN_SECRET)
+        const decodedToken = jwt.verify(token, process.env.VERIFY_ACCESS_TOKEN_SECRET)
         console.log("decoded token",decodedToken)
         const theOtp = decodedToken.otp
         const theEmail = decodedToken.email
         if(theOtp==otp){
             console.log("verified")
-        const {userId} = req.theUser._id
+        const userId = req.theUser._id
         console.log(userId)
         const theUser = await User.findById(userId)
         if(!theUser){
@@ -360,14 +368,19 @@ const generateAPICredentials = asyncHandler(async(req,res)=>{
         if(!everDone){
             const credentials = await ApiKey.create({
                 holder:userId,
-                apiKey:APIkey,
+                apikey:APIkey,
                 apiKeySecret:APISecret  
             })
         }else{
             everDone.apikey = APIkey,
             everDone.apiKeySecret = APISecret,
             everDone.isCopied = false
+            await everDone.save()
         }
+        }
+        const options = {
+            httpOnly : true ,
+            secure : true
         }
         return res.status(200)
         .clearCookie("verifyToken", options)
@@ -376,6 +389,25 @@ const generateAPICredentials = asyncHandler(async(req,res)=>{
             {},
             "otp verified and API crednetials genrated succesfully")
     )
+    } catch (error) {
+        console.log(error)
+        throw new ApiError(400,`${error.message}`)
+        
+    }
+})
+const getcredentials = asyncHandler(async(req,res)=>{
+    try {
+        console.log("sending api keys")
+        const {userId} = req.theUser._id
+        const apikey = await ApiKey.findOne({holder:userId})
+        console.log(apikey)
+        return res.status(200)
+        .json(
+        new ApiResponse(200,
+            {apikey},
+            "Api key sent succesfully")
+    )
+
     } catch (error) {
         
     }
@@ -395,6 +427,7 @@ export {
     sendOtp,
     validatedOtp,
     handleAPIrequest,
-    generateAPICredentials
+    generateAPICredentials,
+    getcredentials
 
 }
