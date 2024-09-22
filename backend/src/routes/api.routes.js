@@ -8,7 +8,7 @@ router.route("/sentotp").post(authVerify,sendOtp)
 router.route("/validatedOtp").post(authVerify,validatedOtp)
 router.route("/handleAPIrequest").post(authVerify,handleAPIrequest)
 router.route("/generateAPICredentials").post(authVerify,generateAPICredentials)
-router.route("/getcredentials").post(authVerify,getcredentials)
+router.route("/getcredentials").get(authVerify,getcredentials)
 
 export default router
 

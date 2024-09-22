@@ -398,7 +398,7 @@ const generateAPICredentials = asyncHandler(async(req,res)=>{
 const getcredentials = asyncHandler(async(req,res)=>{
     try {
         console.log("sending api keys")
-        const {userId} = req.theUser._id
+        const userId = req.theUser._id
         const apikey = await ApiKey.findOne({holder:userId})
         console.log(apikey)
         return res.status(200)
