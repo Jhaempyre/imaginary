@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const uploadImage = asyncHandler(async (req, res) => {
-    const { isPublic } = req.body;
+    const { isPublic  } = req.body;
     let originalFilePath, compressedFilePath;
 
     try {
@@ -23,21 +23,27 @@ const uploadImage = asyncHandler(async (req, res) => {
                 new ApiResponse(400, {}, "No file uploaded")
             );
         }
-
+        //geting file and userInformation
+        
+        const OriginalFileName = req.file.filename
+        const username = req.theUser.username
+        console.log(username)
+        //genrating uniquename
         const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}-${req.file.filename}`;
         const tempDir = os.tmpdir();
-        
+        console.log(tempDir)        
         originalFilePath = path.join(tempDir, uniqueFilename);
         compressedFilePath = path.join(tempDir, `compressed_${uniqueFilename}`);
-
+                   
         // Move the uploaded file to the temp directory
         await fsPromises.rename(req.file.path, originalFilePath);
 
-        // Compress the image outside the main process
+        // Compress the image outside the main process means without blocking the main thread of execution
         await compressImageOutsideProcess(originalFilePath, compressedFilePath);
 
         // Upload the compressed file to GCP
         const blob = bucket.file(uniqueFilename);
+        console.log(blob)
         await pipeline(
             fs.createReadStream(compressedFilePath),
             blob.createWriteStream({
@@ -52,7 +58,7 @@ const uploadImage = asyncHandler(async (req, res) => {
             await blob.makePublic();
         }
 
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${username}/compressed/${blob.name}`;
 
         // Clean up local files
         await Promise.all([
@@ -77,6 +83,8 @@ const uploadImage = asyncHandler(async (req, res) => {
 
 async function compressImageOutsideProcess(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
+
+        //it creating a child process or running on non i/o thread 
         const compressProcess = fork(path.join(__dirname, '../utils', 'compressWorker.js'));
         
         compressProcess.send({ inputPath, outputPath });
