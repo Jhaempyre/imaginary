@@ -36,6 +36,10 @@ const imageSchema = new Schema({
         type: Number,
         // Image height in pixels
       },
+      metadata :{
+        type :Object,
+        required : true
+      },
       isPublic: {
         type: Boolean,
         default: true,

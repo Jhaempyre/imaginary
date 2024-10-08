@@ -9,29 +9,41 @@ import { pipeline } from 'stream/promises';
 import os from 'os';
 import { fork } from 'child_process';
 import { fileURLToPath } from 'url';
+import sharp from "sharp";
+import { image } from "../models/image.models.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const uploadImage = asyncHandler(async (req, res) => {
+const uploadViaImaginary = asyncHandler(async (req, res) => {
     const { isPublic  } = req.body;
     let originalFilePath, compressedFilePath;
 
+    
     try {
+
+
+        // -------------------------currently working for image only------------------------------v-1.0.0 release 
+
         if (!req.file) {
             return res.status(400).json(
                 new ApiResponse(400, {}, "No file uploaded")
             );
         }
         //geting file and userInformation
-        
+
         const OriginalFileName = req.file.filename
+        console.log("original",OriginalFileName)
         const username = req.theUser.username
         console.log(username)
+        const user_id = req.theUser._id
+        console.log(req.file.mimetype)
+        console.log("req.file",req.file)
         //genrating uniquename
-        const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}-${req.file.filename}`;
+        const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}-preview${req.file.filename}`;
+        
         const tempDir = os.tmpdir();
-        console.log(tempDir)        
+        console.log("tempdir",tempDir)        
         originalFilePath = path.join(tempDir, uniqueFilename);
         compressedFilePath = path.join(tempDir, `compressed_${uniqueFilename}`);
                    
@@ -40,10 +52,19 @@ const uploadImage = asyncHandler(async (req, res) => {
 
         // Compress the image outside the main process means without blocking the main thread of execution
         await compressImageOutsideProcess(originalFilePath, compressedFilePath);
+        const metadata  = await sharp(originalFilePath).metadata()
+        console.log(metadata)
+        const nameOfFile = req.file.originalname
+        const sizeOfFile = req.file.size
+        const typeOfFile = req.file.mimetype
+        const width = metadata.width
+        const height = metadata.height
+        
+
 
         // Upload the compressed file to GCP
         const blob = bucket.file(uniqueFilename);
-        console.log(blob)
+        console.log("blob",blob)
         await pipeline(
             fs.createReadStream(compressedFilePath),
             blob.createWriteStream({
@@ -53,21 +74,34 @@ const uploadImage = asyncHandler(async (req, res) => {
                 }
             })
         );
-
+        console.log("pipelines")
         if (isPublic) {
             await blob.makePublic();
         }
 
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${username}/compressed/${blob.name}`;
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+
 
         // Clean up local files
         await Promise.all([
             fsPromises.unlink(originalFilePath).catch(error => console.error(`Failed to delete original file: ${error.message}`)),
             fsPromises.unlink(compressedFilePath).catch(error => console.error(`Failed to delete compressed file: ${error.message}`))
         ]);
+        const picture = await image.create({
+            imageUrl : publicUrl,
+            ownerId : user_id ,
+            fileName : nameOfFile,
+            fileSize : sizeOfFile,
+            fileType : typeOfFile,
+            width : width ,
+            height : height ,
+            metadata:metadata , 
+            isPublic : isPublic
 
+        })
         return res.status(200).json(
-            new ApiResponse(200, { url: publicUrl }, `File uploaded ${isPublic ? 'publicly' : 'privately'} and processed successfully`)
+            new ApiResponse(200, {imageResponse:picture}, `File uploaded ${isPublic ? 'publicly' : 'privately'} and processed successfully`)
         );
 
     } catch (error) {
@@ -117,4 +151,4 @@ outside the process
 fs link and unlink 
  
 */
-export default uploadImage;
+export default uploadViaImaginary;
